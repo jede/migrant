@@ -1,0 +1,26 @@
+{
+  "name": "migrant",
+  "version": "0.0.1",
+  "description": "Abstracted migration tool for databases, files and everything that can be migrated",
+  "main": "bin/migrant",
+  "scripts": {
+    "test": "mocha"
+  },
+  "bin" : {
+    "migrant" : "./bin/migrant"
+  },
+  "keywords": [
+    "migration",
+    "migrate"
+  ],
+  "author": "Johannes Edelstam <johannes-git@edelst.am>",
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "~1.18.2"
+  },
+  "dependencies": {
+    "nomnom": "~1.6.2",
+    "coffee-script": "~1.7.1",
+    "moment": "~2.6.0"
+  }
+}

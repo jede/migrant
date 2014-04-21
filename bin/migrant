@@ -1,0 +1,164 @@
+#!/usr/bin/env coffee
+
+fs = require 'fs'
+join = require('path').join
+moment = require 'moment'
+parser = require 'nomnom'
+
+VERSION = '0.0.1'
+cwd = process.cwd()
+
+class Migrant
+  versionPattern: /^(\d+)(?=_)/g
+
+  constructor: (config) ->
+    @config = config
+    @version = require(join(cwd, config.path, 'version'))(this)
+    @migrationsPath = join(@config.path, 'migrations')
+
+  migration: (version) ->
+    file = null
+    @migrationFiles().forEach (f) ->
+      if f.indexOf(version) == 0
+        file = f
+        return false
+
+    require(join('../', @migrationsPath, file))(this) if file?
+
+  migrationFiles: ->
+    fs.readdirSync(@migrationsPath).filter (file) =>
+      file.match(@versionPattern)
+
+  versions: ->
+    @migrationFiles().map (f) =>
+      m = f.match(@versionPattern)
+      m[0] if m?
+
+  updateVersion: (version, callback) ->
+    @version.update version, callback
+
+  currentVersion: (callback) ->
+    @version.current callback
+
+init = ->
+  rc =  JSON.parse fs.readFileSync '.migrantrc'
+  config = require join(cwd, rc.config)
+
+  migrant = new Migrant config
+
+
+parser
+  .option 'debug',
+    abbr: 'd'
+    flag: true
+    help: 'Print debugging info'
+  .option 'config',
+    abbr: 'c'
+    default: 'config.json'
+    help: 'JSON file with tests to run'
+  .option 'version',
+    abbr: 'v'
+    flag: true
+    help: 'print version and exit'
+    callback: ->
+      'version ' + VERSION
+
+
+parser
+  .command 'init'
+  .callback (opts) ->
+    body = """
+{
+  "config": "./config/migrant"
+}
+"""
+    fd = fs.openSync('.migrantrc', "w", 0o666)
+    fs.writeSync fd, body
+    fs.closeSync fd
+
+    body = """
+module.exports = {
+  path: 'db'
+}
+"""
+    fd = fs.openSync('./config/migrant.js', "w", 0o666)
+    fs.writeSync fd, body
+    fs.closeSync fd
+
+    fs.mkdirSync 'db'
+    fs.mkdirSync 'db/migrations'
+
+    body = """
+module.exports = function (migrant) {
+  setup: function() {
+
+  },
+
+  update: function (version, callback) {
+    callback()
+  },
+
+  current: function (callback) {
+    callback(null)
+  }
+}
+"""
+    fd = fs.openSync('db/version.js', "w", 0o666)
+    fs.writeSync fd, body
+    fs.closeSync fd
+
+parser
+  .command 'create'
+  .callback (opts) ->
+    migrant = init()
+
+    name = opts[1]
+    throw '[NAME] needs to be specified' unless name && name.length > 0
+
+    version = moment().format('YYYYMMDDHHmmssS')
+
+    existing = migrant.versions()
+    throw "Version #{version} already exists, try again" if existing.indexOf(version) >= 0
+
+    file = "#{version}_#{name.toLowerCase().replace(/\s+/, '_')}.coffee"
+    body = """
+module.exports = (migrant) ->
+
+  up: (done) ->
+    done()
+
+"""
+    path = join(migrant.migrationsPath, file)
+    fd = fs.openSync(path, "a+", 0o666)
+    fs.writeSync fd, body
+    fs.closeSync fd
+
+    console.log "created #{file}"
+
+parser
+  .command 'migrate'
+  .callback (opts) ->
+    migrant = init()
+
+    migrant.currentVersion (current) ->
+      existing = migrant.versions()
+      index = existing.indexOf(current) + 1
+      missing = existing.slice(index)
+
+      return console.log "already up to date" if missing.length <= 0
+
+      next = ->
+        version = missing.pop()
+        if version?
+          migration = migrant.migration(version)
+          console.log "migrating up to #{version}"
+          migration.up ->
+            migrant.updateVersion(version, next)
+        else
+          console.log "up to date"
+      next()
+
+
+
+opts = parser.parse()
+

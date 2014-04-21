@@ -11,15 +11,15 @@ npm install -g migrant
 
 ## Usage
 
-Initialize migrant. This will create: .migrantrc, config/migrant.js,
-db/version.js and db/migrations/.
+Initialize migrant. This will create: `.migrantrc`, `config/migrant.js`,
+`db/version.js` and `db/migrations/`.
 
 ```bash
-$ migrant init
+migrant init
 ```
 
 To create your first migration just run:
 
 ```bash
-$ migrant create "first migration"
+migrant create "first migration"
 ```

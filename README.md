@@ -1,7 +1,8 @@
-# Migrant
+# Migrant (work in progress)
 
 A completely dabatase independent migration tool. Migrant gives you a
-framework for using migrations in any context.
+framework for using migrations in any context. Migrant is beeing developed
+and is right now not ready for production use.
 
 ## Installation
 
